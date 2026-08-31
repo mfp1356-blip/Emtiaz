@@ -1,557 +1,466 @@
 package com.emtiaz.app
 
+import android.app.Activity
 import android.app.AlertDialog
+import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
-import android.os.Bundle
+import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
-import kotlin.math.abs
+import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
-    private var team1Score = 0
-    private var team2Score = 0
-    private var roundNumber = 0
+    private lateinit var team1Name: TextView
+    private lateinit var team2Name: TextView
+    private lateinit var team1Score: TextView
+    private lateinit var team2Score: TextView
+    private lateinit var roundsText: TextView
 
-    private lateinit var team1Name: String
-    private lateinit var team2Name: String
+    private var score1 = 0
+    private var score2 = 0
+    private var roundCount = 0
 
-    private lateinit var scoreText: TextView
-    private lateinit var historyLayout: LinearLayout
+    private val history = ArrayList<Pair<Int, Int>>()
 
-    private lateinit var readInput: EditText
-    private lateinit var opponentInput: EditText
-    private lateinit var bidderGroup: RadioGroup
-
-    private val backgroundColor = Color.rgb(15, 12, 30)
-    private val cardColor = Color.rgb(40, 34, 62)
-    private val purpleColor = Color.rgb(112, 78, 220)
-    private val greenColor = Color.rgb(34, 170, 105)
-    private val redColor = Color.rgb(205, 55, 70)
-    private val normalColor = Color.rgb(30, 30, 35)
+    private val prefsName = "shemr_score"
+    private val team1Key = "team1"
+    private val team2Key = "team2"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showStartScreen()
+
+        window.statusBarColor = Color.rgb(20, 48, 42)
+
+        showTeamNamesDialog()
     }
 
-    private fun rootLayout(): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(18, 18, 18, 18)
-            setBackgroundColor(backgroundColor)
-            layoutDirection = View.LAYOUT_DIRECTION_RTL
+    // ---------------------------------------------------------
+    // دریافت نام دو گروه
+    // ---------------------------------------------------------
+
+    private fun showTeamNamesDialog() {
+
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.setPadding(45, 25, 45, 10)
+        layout.layoutDirection = View.LAYOUT_DIRECTION_RTL
+
+        val title = TextView(this)
+        title.text = "امتیاز شلم"
+        title.textSize = 26f
+        title.setTypeface(null, Typeface.BOLD)
+        title.gravity = Gravity.CENTER
+        title.setTextColor(Color.rgb(20, 80, 65))
+
+        val subtitle = TextView(this)
+        subtitle.text = "نام دو گروه را وارد کنید"
+        subtitle.textSize = 16f
+        subtitle.gravity = Gravity.CENTER
+        subtitle.setPadding(0, 10, 0, 25)
+
+        val team1Input = EditText(this)
+        team1Input.hint = "نام گروه اول"
+        team1Input.textSize = 17f
+        team1Input.gravity = Gravity.RIGHT
+        team1Input.setSingleLine(true)
+
+        val team2Input = EditText(this)
+        team2Input.hint = "نام گروه دوم"
+        team2Input.textSize = 17f
+        team2Input.gravity = Gravity.RIGHT
+        team2Input.setSingleLine(true)
+
+        layout.addView(title)
+        layout.addView(subtitle)
+        layout.addView(team1Input)
+        layout.addView(team2Input)
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(layout)
+            .setPositiveButton("شروع بازی", null)
+            .setNegativeButton("لغو", null)
+            .create()
+
+        dialog.setOnShowListener {
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+
+                val name1 = team1Input.text.toString().trim()
+                val name2 = team2Input.text.toString().trim()
+
+                if (name1.isEmpty()) {
+                    team1Input.error = "نام گروه اول را وارد کنید"
+                    return@setOnClickListener
+                }
+
+                if (name2.isEmpty()) {
+                    team2Input.error = "نام گروه دوم را وارد کنید"
+                    return@setOnClickListener
+                }
+
+                getSharedPreferences(prefsName, MODE_PRIVATE)
+                    .edit()
+                    .putString(team1Key, name1)
+                    .putString(team2Key, name2)
+                    .apply()
+
+                createMainScreen(name1, name2)
+                dialog.dismiss()
+            }
         }
+
+        dialog.setCanceledOnTouchOutside(false)
+        dialog.show()
     }
 
-    private fun text(
-        value: String,
-        size: Float = 18f
-    ): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(8, 8, 8, 8)
-        }
-    }
+    // ---------------------------------------------------------
+    // صفحه اصلی
+    // ---------------------------------------------------------
 
-    private fun input(hintText: String): EditText {
-        return EditText(this).apply {
-            hint = hintText
-            textSize = 17f
-            setSingleLine(true)
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            gravity = Gravity.CENTER
-            setPadding(18, 0, 18, 0)
+    private fun createMainScreen(name1: String, name2: String) {
 
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 28f
-                setColor(cardColor)
-                setStroke(2, Color.argb(50, 255, 255, 255))
-            }
-        }
-    }
+        val root = LinearLayout(this)
+        root.orientation = LinearLayout.VERTICAL
+        root.gravity = Gravity.CENTER_HORIZONTAL
+        root.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        root.setBackgroundColor(Color.rgb(245, 247, 246))
+        root.setPadding(25, 25, 25, 25)
 
-    private fun button(
-        title: String,
-        color: Int,
-        action: () -> Unit
-    ): Button {
-        return Button(this).apply {
-            text = title
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            elevation = 10f
+        // عنوان
+        val title = TextView(this)
+        title.text = "♠  امتیاز شلم  ♥"
+        title.textSize = 28f
+        title.setTypeface(null, Typeface.BOLD)
+        title.setTextColor(Color.rgb(20, 80, 65))
+        title.gravity = Gravity.CENTER
+        title.setPadding(0, 10, 0, 25)
 
-            background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 30f
-                setColor(color)
-                setStroke(2, Color.argb(60, 255, 255, 255))
-            }
+        root.addView(title)
 
-            setOnClickListener {
-                action()
-            }
-        }
-    }
+        // کارت امتیازات
+        val scoreRow = LinearLayout(this)
+        scoreRow.orientation = LinearLayout.HORIZONTAL
+        scoreRow.gravity = Gravity.CENTER
+        scoreRow.layoutDirection = View.LAYOUT_DIRECTION_LTR
 
-    private fun fullParams(height: Int = 56): LinearLayout.LayoutParams {
-        return LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            height
-        ).apply {
-            setMargins(0, 6, 0, 6)
-        }
-    }
+        val card1 = createScoreCard(name1, true)
+        val card2 = createScoreCard(name2, false)
 
-    private fun showStartScreen() {
-
-        val root = rootLayout()
-
-        root.addView(
-            text("♠  امتیاز شلم  ♠", 30f),
-            fullParams(70)
-        )
-
-        root.addView(
-            text("شروع یک بازی جدید", 18f),
-            fullParams(45)
-        )
-
-        root.addView(
-            text("نام چهار بازیکن", 17f),
-            fullParams(42)
-        )
-
-        val player1 = input("بازیکن ۱")
-        val player2 = input("بازیکن ۲")
-        val player3 = input("بازیکن ۳")
-        val player4 = input("بازیکن ۴")
-
-        root.addView(player1, fullParams())
-        root.addView(player2, fullParams())
-        root.addView(player3, fullParams())
-        root.addView(player4, fullParams())
-
-        root.addView(
-            text("نام تیم‌ها", 17f),
-            fullParams(42)
-        )
-
-        val team1Input = input("تیم اول")
-        val team2Input = input("تیم دوم")
-
-        root.addView(team1Input, fullParams())
-        root.addView(team2Input, fullParams())
-
-        root.addView(
-            text("نوع بازی", 17f),
-            fullParams(42)
-        )
-
-        val gameType = RadioGroup(this).apply {
-            orientation = RadioGroup.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-
-        val withoutJoker = RadioButton(this).apply {
-            id = 101
-            text = "بدون جوکر"
-            textSize = 16f
-            setTextColor(Color.WHITE)
-        }
-
-        val withJoker = RadioButton(this).apply {
-            id = 102
-            text = "با جوکر"
-            textSize = 16f
-            setTextColor(Color.WHITE)
-        }
-
-        gameType.addView(withoutJoker)
-        gameType.addView(withJoker)
-        gameType.check(101)
-
-        root.addView(
-            gameType,
-            fullParams(55)
-        )
-
-        root.addView(
-            button("شروع بازی  ✦", purpleColor) {
-
-                team1Name =
-                    if (team1Input.text.toString().trim().isEmpty())
-                        "تیم اول"
-                    else
-                        team1Input.text.toString().trim()
-
-                team2Name =
-                    if (team2Input.text.toString().trim().isEmpty())
-                        "تیم دوم"
-                    else
-                        team2Input.text.toString().trim()
-
-                team1Score = 0
-                team2Score = 0
-                roundNumber = 0
-
-                showGameScreen()
-            },
-            fullParams(64)
-        )
-
-        setContentView(root)
-    }
-
-    private fun showGameScreen() {
-
-        val root = rootLayout()
-
-        root.addView(
-            text("♠  امتیاز شلم  ♠", 28f),
-            fullParams(62)
-        )
-
-        scoreText = text(
-            "$team1Name: 0     |     $team2Name: 0",
-            19f
-        )
-
-        scoreText.setBackgroundColor(cardColor)
-
-        root.addView(
-            scoreText,
-            fullParams(64)
-        )
-
-        root.addView(
-            text("امتیاز خوانده‌شده", 16f),
-            fullParams(38)
-        )
-
-        readInput = input("مثلاً ۱۲۰")
-        root.addView(
-            readInput,
-            fullParams()
-        )
-
-        root.addView(
-            text("امتیاز تیم مقابل", 16f),
-            fullParams(38)
-        )
-
-        opponentInput = input("مثلاً ۷۰")
-        root.addView(
-            opponentInput,
-            fullParams()
-        )
-
-        root.addView(
-            text("تیم حاکم / خواننده", 16f),
-            fullParams(40)
-        )
-
-        bidderGroup = RadioGroup(this).apply {
-            orientation = RadioGroup.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-
-        val team1Radio = RadioButton(this).apply {
-            id = 201
-            text = team1Name
-            textSize = 16f
-            setTextColor(Color.WHITE)
-        }
-
-        val team2Radio = RadioButton(this).apply {
-            id = 202
-            text = team2Name
-            textSize = 16f
-            setTextColor(Color.WHITE)
-        }
-
-        bidderGroup.addView(team1Radio)
-        bidderGroup.addView(team2Radio)
-        bidderGroup.check(201)
-
-        root.addView(
-            bidderGroup,
-            fullParams(52)
-        )
-
-        root.addView(
-            text("نوع دست را انتخاب کنید", 16f),
-            fullParams(40)
-        )
-
-        val typeRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-        }
-
-        val normalButton =
-            button("معمولی", normalColor) {
-                addRound(RoundType.NORMAL)
-            }
-
-        val yasaButton =
-            button("یاسا", greenColor) {
-                addRound(RoundType.YASA)
-            }
-
-        val shelemButton =
-            button("شلم", redColor) {
-                addRound(RoundType.SHELEM)
-            }
-
-        typeRow.addView(
-            normalButton,
-            LinearLayout.LayoutParams(0, 62, 1f).apply {
-                setMargins(3, 3, 3, 3)
+        scoreRow.addView(
+            card1,
+            LinearLayout.LayoutParams(0, 270, 1f).apply {
+                setMargins(0, 0, 10, 0)
             }
         )
 
-        typeRow.addView(
-            yasaButton,
-            LinearLayout.LayoutParams(0, 62, 1f).apply {
-                setMargins(3, 3, 3, 3)
+        scoreRow.addView(
+            card2,
+            LinearLayout.LayoutParams(0, 270, 1f).apply {
+                setMargins(10, 0, 0, 0)
             }
         )
 
-        typeRow.addView(
-            shelemButton,
-            LinearLayout.LayoutParams(0, 62, 1f).apply {
-                setMargins(3, 3, 3, 3)
-            }
+        root.addView(scoreRow)
+
+        // وضعیت دور
+        roundsText = TextView(this)
+        roundsText.text = "تعداد دورها: 0"
+        roundsText.textSize = 17f
+        roundsText.gravity = Gravity.CENTER
+        roundsText.setTextColor(Color.DKGRAY)
+        roundsText.setPadding(0, 20, 0, 20)
+
+        root.addView(roundsText)
+
+        // دکمه ثبت امتیاز
+        val addButton = createButton(
+            "➕  ثبت امتیاز دور جدید",
+            Color.rgb(25, 110, 85)
         )
 
-        root.addView(
-            typeRow,
-            fullParams(70)
-        )
-
-        root.addView(
-            text("دست‌های ثبت‌شده", 18f),
-            fullParams(44)
-        )
-
-        historyLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        val scroll = ScrollView(this).apply {
-            addView(historyLayout)
+        addButton.setOnClickListener {
+            showAddScoreDialog()
         }
 
         root.addView(
-            scroll,
+            addButton,
             LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                65
+            ).apply {
+                setMargins(0, 5, 0, 12)
+            }
+        )
+
+        // دکمه تاریخچه
+        val historyButton = createButton(
+            "📋  تاریخچه امتیازات",
+            Color.rgb(55, 75, 90)
+        )
+
+        historyButton.setOnClickListener {
+            showHistory()
+        }
+
+        root.addView(
+            historyButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                65
+            ).apply {
+                setMargins(0, 0, 0, 12)
+            }
+        )
+
+        // دکمه بازی جدید
+        val newGameButton = createButton(
+            "🔄  بازی جدید",
+            Color.rgb(150, 65, 55)
+        )
+
+        newGameButton.setOnClickListener {
+            confirmNewGame()
+        }
+
+        root.addView(
+            newGameButton,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                65
             )
         )
 
         setContentView(root)
     }
 
-    private enum class RoundType {
-        NORMAL,
-        YASA,
-        SHELEM
-    }
+    // ---------------------------------------------------------
+    // کارت امتیاز
+    // ---------------------------------------------------------
 
-    private fun addRound(type: RoundType) {
+    private fun createScoreCard(
+        name: String,
+        first: Boolean
+    ): LinearLayout {
 
-        val read =
-            readInput.text.toString().trim().toIntOrNull()
+        val card = LinearLayout(this)
+        card.orientation = LinearLayout.VERTICAL
+        card.gravity = Gravity.CENTER
+        card.setPadding(10, 15, 10, 15)
 
-        val opponent =
-            opponentInput.text.toString().trim().toIntOrNull()
+        val background = GradientDrawable()
+        background.cornerRadius = 35f
 
-        if (read == null || opponent == null || read <= 0 || opponent < 0) {
-
-            Toast.makeText(
-                this,
-                "لطفاً امتیازها را صحیح وارد کنید",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            return
-        }
-
-        val bidderTeam =
-            if (bidderGroup.checkedRadioButtonId == 201)
-                1
-            else
-                2
-
-        val bidderDelta =
-            when (type) {
-
-                RoundType.NORMAL ->
-                    read
-
-                RoundType.YASA ->
-                    -2 * read
-
-                RoundType.SHELEM ->
-                    2 * read
-            }
-
-        val finalBidderDelta =
-            if (type == RoundType.NORMAL) {
-
-                /*
-                 * در حالت معمولی فرض می‌کنیم اگر امتیاز
-                 * تیم مقابل ثبت شده باشد، تیم حاکم
-                 * به خوانده رسیده است.
-                 *
-                 * در نسخه نهایی می‌توانیم یک گزینه
-                 * «خوانده / نخوانده» هم اضافه کنیم.
-                 */
-                read
-
-            } else {
-                bidderDelta
-            }
-
-        val otherDelta = opponent
-
-        if (bidderTeam == 1) {
-
-            team1Score += finalBidderDelta
-            team2Score += otherDelta
-
+        if (first) {
+            background.setColor(Color.rgb(225, 241, 235))
         } else {
-
-            team2Score += finalBidderDelta
-            team1Score += otherDelta
+            background.setColor(Color.rgb(235, 237, 242))
         }
 
-        roundNumber++
+        card.background = background
 
-        val roundColor =
-            when (type) {
+        val nameText = TextView(this)
+        nameText.text = name
+        nameText.textSize = 19f
+        nameText.setTypeface(null, Typeface.BOLD)
+        nameText.gravity = Gravity.CENTER
+        nameText.setTextColor(Color.rgb(30, 45, 45))
 
-                RoundType.NORMAL ->
-                    normalColor
+        val scoreText = TextView(this)
+        scoreText.text = "0"
+        scoreText.textSize = 50f
+        scoreText.setTypeface(null, Typeface.BOLD)
+        scoreText.gravity = Gravity.CENTER
 
-                RoundType.YASA ->
-                    greenColor
+        if (first) {
+            scoreText.setTextColor(Color.rgb(20, 105, 80))
+        } else {
+            scoreText.setTextColor(Color.rgb(50, 70, 110))
+        }
 
-                RoundType.SHELEM ->
-                    redColor
-            }
+        if (first) {
+            team1Name = nameText
+            team1Score = scoreText
+        } else {
+            team2Name = nameText
+            team2Score = scoreText
+        }
 
-        val title =
-            when (type) {
+        card.addView(nameText)
+        card.addView(scoreText)
 
-                RoundType.NORMAL ->
-                    "معمولی"
-
-                RoundType.YASA ->
-                    "یاسا"
-
-                RoundType.SHELEM ->
-                    "شلم"
-            }
-
-        val firstTeam =
-            if (bidderTeam == 1)
-                team1Name
-            else
-                team2Name
-
-        val secondTeam =
-            if (bidderTeam == 1)
-                team2Name
-            else
-                team1Name
-
-        val firstDelta =
-            finalBidderDelta
-
-        val secondDelta =
-            otherDelta
-
-        val row = text(
-            "دست $roundNumber  •  $title\n" +
-                    "$firstTeam: ${formatScore(firstDelta)}   |   " +
-                    "$secondTeam: ${formatScore(secondDelta)}",
-            15f
-        )
-
-        row.setBackgroundColor(roundColor)
-
-        historyLayout.addView(
-            row,
-            0,
-            fullParams(70)
-        )
-
-        scoreText.text =
-            "$team1Name: ${formatScore(team1Score)}     |     " +
-                    "$team2Name: ${formatScore(team2Score)}"
-
-        readInput.text.clear()
-        opponentInput.text.clear()
-
-        checkGameOver()
+        return card
     }
 
-    private fun formatScore(score: Int): String {
+    // ---------------------------------------------------------
+    // ثبت امتیاز
+    // ---------------------------------------------------------
 
-        return if (score > 0)
-            "+$score"
-        else
-            score.toString()
+    private fun showAddScoreDialog() {
+
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.layoutDirection = View.LAYOUT_DIRECTION_RTL
+        layout.setPadding(40, 20, 40, 5)
+
+        val title = TextView(this)
+        title.text = "ثبت امتیاز دور جدید"
+        title.textSize = 22f
+        title.setTypeface(null, Typeface.BOLD)
+        title.gravity = Gravity.CENTER
+        title.setTextColor(Color.rgb(20, 80, 65))
+
+        val input1 = EditText(this)
+        input1.hint = "امتیاز گروه اول"
+        input1.inputType = 2
+        input1.textSize = 18f
+        input1.gravity = Gravity.RIGHT
+
+        val input2 = EditText(this)
+        input2.hint = "امتیاز گروه دوم"
+        input2.inputType = 2
+        input2.textSize = 18f
+        input2.gravity = Gravity.RIGHT
+
+        layout.addView(title)
+        layout.addView(input1)
+        layout.addView(input2)
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(layout)
+            .setPositiveButton("ثبت", null)
+            .setNegativeButton("انصراف", null)
+            .create()
+
+        dialog.setOnShowListener {
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+
+                val s1 = input1.text.toString().toIntOrNull()
+                val s2 = input2.text.toString().toIntOrNull()
+
+                if (s1 == null) {
+                    input1.error = "امتیاز را وارد کنید"
+                    return@setOnClickListener
+                }
+
+                if (s2 == null) {
+                    input2.error = "امتیاز را وارد کنید"
+                    return@setOnClickListener
+                }
+
+                history.add(Pair(s1, s2))
+
+                score1 += s1
+                score2 += s2
+                roundCount++
+
+                updateScores()
+
+                dialog.dismiss()
+            }
+        }
+
+        dialog.show()
     }
 
-    private fun checkGameOver() {
+    // ---------------------------------------------------------
+    // بروزرسانی امتیاز
+    // ---------------------------------------------------------
 
-        val gameOver =
-            team1Score >= 1200 ||
-                    team2Score >= 1200 ||
-                    abs(team1Score - team2Score) >= 1200
+    private fun updateScores() {
 
-        if (!gameOver)
+        team1Score.text = score1.toString()
+        team2Score.text = score2.toString()
+
+        roundsText.text = "تعداد دورها: $roundCount"
+    }
+
+    // ---------------------------------------------------------
+    // تاریخچه
+    // ---------------------------------------------------------
+
+    private fun showHistory() {
+
+        if (history.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("تاریخچه")
+                .setMessage("هنوز هیچ دوری ثبت نشده است.")
+                .setPositiveButton("باشه", null)
+                .show()
+
             return
+        }
 
-        val winner =
-            when {
+        val team1 = team1Name.text.toString()
+        val team2 = team2Name.text.toString()
 
-                team1Score > team2Score ->
-                    team1Name
+        val text = StringBuilder()
 
-                team2Score > team1Score ->
-                    team2Name
+        for (i in history.indices) {
 
-                else ->
-                    "مساوی"
-            }
+            val item = history[i]
+
+            text.append("دور ${i + 1}\n")
+            text.append("$team1 : ${item.first}\n")
+            text.append("$team2 : ${item.second}\n")
+            text.append("--------------------\n")
+        }
 
         AlertDialog.Builder(this)
-            .setTitle("🏆 پایان بازی")
-            .setMessage(
-                "برنده: $winner\n\n" +
-                        "$team1Name: $team1Score\n" +
-                        "$team2Name: $team2Score"
-            )
-            .setPositiveButton("بازی جدید") { _, _ ->
-                showStartScreen()
-            }
-            .setCancelable(false)
+            .setTitle("📋 تاریخچه بازی")
+            .setMessage(text.toString())
+            .setPositiveButton("بستن", null)
             .show()
+    }
+
+    // ---------------------------------------------------------
+    // بازی جدید
+    // ---------------------------------------------------------
+
+    private fun confirmNewGame() {
+
+        AlertDialog.Builder(this)
+            .setTitle("بازی جدید")
+            .setMessage("امتیازات فعلی پاک می‌شوند. ادامه می‌دهید؟")
+            .setNegativeButton("انصراف", null)
+            .setPositiveButton("بله، بازی جدید") { _, _ ->
+
+                score1 = 0
+                score2 = 0
+                roundCount = 0
+                history.clear()
+
+                showTeamNamesDialog()
+            }
+            .show()
+    }
+
+    // ---------------------------------------------------------
+    // ساخت دکمه
+    // ---------------------------------------------------------
+
+    private fun createButton(
+        text: String,
+        color: Int
+    ): Button {
+
+        val button = Button(this)
+
+        button.text = text
+        button.textSize = 16f
+        button.setTypeface(null, Typeface.BOLD)
+        button.setTextColor(Color.WHITE)
+        button.gravity = Gravity.CENTER
+
+        val drawable = GradientDrawable()
+        drawable.setColor(color)
+        drawable.cornerRadius = 25f
+
+        button.background = drawable
+
+        return button
     }
 }
