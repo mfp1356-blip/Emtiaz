@@ -33,32 +33,35 @@ jobs:
 
       - name: Prepare signing key
         env:
-          KEYSTORE_BASE64: ${{ secrets.EMTIAZ_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_FILE }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > upload-keystore.jks
+          echo "$KEYSTORE_BASE64" | base64 --decode > upload-keystore.p12
+
+      - name: Check signing key
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          keytool -list \
+            -keystore upload-keystore.p12 \
+            -storepass "$KEYSTORE_PASSWORD"
 
       - name: Sign Release AAB
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.EMTIAZ_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.EMTIAZ_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.EMTIAZ_KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
         run: |
           jarsigner \
-            -keystore upload-keystore.jks \
+            -keystore upload-keystore.p12 \
             -storepass "$KEYSTORE_PASSWORD" \
-            -keypass "$KEY_PASSWORD" \
+            -keypass "$KEYSTORE_PASSWORD" \
             -sigalg SHA256withRSA \
             -digestalg SHA-256 \
             app/build/outputs/bundle/release/app-release.aab \
             "$KEY_ALIAS"
 
       - name: Verify AAB signature
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.EMTIAZ_KEYSTORE_PASSWORD }}
         run: |
           jarsigner -verify -verbose -certs \
-            -keystore upload-keystore.jks \
-            -storepass "$KEYSTORE_PASSWORD" \
             app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload Release AAB
@@ -71,4 +74,4 @@ jobs:
       - name: Clean signing key
         if: always()
         run: |
-          rm -f upload-keystore.jks
+          rm -f upload-keystore.p12
