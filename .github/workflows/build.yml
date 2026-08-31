@@ -27,8 +27,8 @@ jobs:
           gradle-version: '8.9'
 
       - name: Build Release AAB
-  run: |
-    gradle bundleRelease --stacktrace
+        run: |
+          gradle bundleRelease --stacktrace
 
       - name: Prepare signing key
         env:
@@ -48,7 +48,7 @@ jobs:
       - name: Sign Release AAB
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+          KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
         run: |
           jarsigner \
             -keystore upload-keystore.p12 \
@@ -58,7 +58,7 @@ jobs:
             -sigalg SHA256withRSA \
             -digestalg SHA-256 \
             app/build/outputs/bundle/release/app-release.aab \
-            "$KEY_ALIAS"
+            "$KEYSTORE_ALIAS"
 
       - name: Verify AAB signature
         env:
