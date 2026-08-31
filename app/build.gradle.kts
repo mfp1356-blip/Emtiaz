@@ -4,6 +4,32 @@ plugins {
 }
 
 android {
+    namespace = "com.emtiaz.app"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.emtiaz.app"
+        minSdk = 23
+        targetSdk = 35
+
+        versionCode = 2
+        versionName = "1.1"
+
+        testInstrumentationRunner =
+            "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -12,24 +38,6 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
-    }
-
-    namespace = "com.emtiaz.app"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "com.emtiaz.app"
-        minSdk = 23
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-        }
     }
 }
 
