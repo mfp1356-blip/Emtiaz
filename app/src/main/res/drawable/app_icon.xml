@@ -1,0 +1,45 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#17122B"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z" />
+
+    <!-- Back card -->
+    <path
+        android:fillColor="#6A45C7"
+        android:pathData="M29,20 L78,20 L87,29 L87,78 L78,87 L29,87 L20,78 L20,29 Z" />
+
+    <!-- Front card -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M25,16 L73,16 L82,25 L82,73 L73,82 L25,82 L16,73 L16,25 Z" />
+
+    <!-- Card shadow / 3D edge -->
+    <path
+        android:fillColor="#B58AFF"
+        android:pathData="M25,82 L73,82 L82,73 L82,78 L73,91 L25,91 L16,82 L16,73 Z" />
+
+    <!-- Spade -->
+    <path
+        android:fillColor="#5B35B5"
+        android:pathData="M49,31
+            C45,37 36,42 36,50
+            C36,57 41,61 47,58
+            L43,69
+            L53,69
+            L59,58
+            C65,61 72,57 72,50
+            C72,42 63,37 59,31
+            C56,27 52,27 49,31 Z" />
+
+    <!-- Gold center -->
+    <path
+        android:fillColor="#F6C453"
+        android:pathData="M50,42 L54,42 L54,55 L50,55 Z" />
+
+</vector>
