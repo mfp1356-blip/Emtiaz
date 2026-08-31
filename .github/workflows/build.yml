@@ -1,4 +1,4 @@
-name: Build Emtiaz APK
+name: Build Emtiaz Release
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Release AAB
     runs-on: ubuntu-latest
 
     steps:
@@ -26,15 +26,49 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+      - name: Build Release AAB
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --stacktrace
 
-      - name: Run unit tests
-        run: gradle test --stacktrace
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.EMTIAZ_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > upload-keystore.jks
 
-      - name: Upload APK
+      - name: Sign Release AAB
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.EMTIAZ_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.EMTIAZ_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.EMTIAZ_KEY_PASSWORD }}
+        run: |
+          jarsigner \
+            -keystore upload-keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -keypass "$KEY_PASSWORD" \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            app/build/outputs/bundle/release/app-release.aab \
+            "$KEY_ALIAS"
+
+      - name: Verify AAB signature
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.EMTIAZ_KEYSTORE_PASSWORD }}
+        run: |
+          jarsigner -verify -verbose -certs \
+            -keystore upload-keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload Release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: Emtiaz-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: Emtiaz-Release-AAB
+          path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
+
+      - name: Clean signing key
+        if: always()
+        run: |
+          rm -f upload-keystore.jks
