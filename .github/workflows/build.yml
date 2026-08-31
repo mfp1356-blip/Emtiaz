@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -28,7 +28,7 @@ jobs:
 
       - name: Build Release AAB
         run: |
-          chmod +x gradlew
+          chmod +x ./gradlew
           ./gradlew bundleRelease --stacktrace
 
       - name: Prepare signing key
@@ -43,6 +43,7 @@ jobs:
         run: |
           keytool -list \
             -keystore upload-keystore.p12 \
+            -storetype PKCS12 \
             -storepass "$KEYSTORE_PASSWORD"
 
       - name: Sign Release AAB
@@ -52,6 +53,7 @@ jobs:
         run: |
           jarsigner \
             -keystore upload-keystore.p12 \
+            -storetype PKCS12 \
             -storepass "$KEYSTORE_PASSWORD" \
             -keypass "$KEYSTORE_PASSWORD" \
             -sigalg SHA256withRSA \
@@ -60,8 +62,13 @@ jobs:
             "$KEY_ALIAS"
 
       - name: Verify AAB signature
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           jarsigner -verify -verbose -certs \
+            -keystore upload-keystore.p12 \
+            -storetype PKCS12 \
+            -storepass "$KEYSTORE_PASSWORD" \
             app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload Release AAB
