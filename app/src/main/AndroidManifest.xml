@@ -3,7 +3,8 @@
 
     <application
         android:allowBackup="true"
-        android:label="امتیاز شلم"
+        android:icon="@drawable/app_logo"
+        android:label="امتیاز"
         android:supportsRtl="true"
         android:theme="@style/Theme.Emtiaz">
 
